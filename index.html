@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Shooter</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: black; }
+        canvas { display: block; margin: 0 auto; }
+        .game-over { color: white; font-size: 30px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="gameOverText" class="game-over">Game Over! Press Space to Restart</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const shipWidth = 50, shipHeight = 50, asteroidSize = 50;
+        let shipX = canvas.width / 2 - shipWidth / 2, shipY = canvas.height - shipHeight - 30;
+        let leftPressed = false, rightPressed = false, spacePressed = false;
+        let lasers = [], asteroids = [], score = 0;
+        let gameOver = false;
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'ArrowLeft') leftPressed = true;
+            if (e.code === 'ArrowRight') rightPressed = true;
+            if (e.code === 'Space') spacePressed = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'ArrowLeft') leftPressed = false;
+            if (e.code === 'ArrowRight') rightPressed = false;
+            if (e.code === 'Space') spacePressed = false;
+        });
+
+        function drawShip() {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(shipX, shipY, shipWidth, shipHeight);
+        }
+
+        function drawLaser(laser) {
+            ctx.fillStyle = 'red';
+            ctx.fillRect(laser.x, laser.y, 5, 15);
+        }
+
+        function drawAsteroid(asteroid) {
+            ctx.fillStyle = 'gray';
+            ctx.beginPath();
+            ctx.arc(asteroid.x, asteroid.y, asteroidSize, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function moveShip() {
+            if (leftPressed && shipX > 0) shipX -= 5;
+            if (rightPressed && shipX < canvas.width - shipWidth) shipX += 5;
+        }
+
+        function moveLasers() {
+            lasers.forEach((laser, index) => {
+                laser.y -= 10;
+                if (laser.y < 0) lasers.splice(index, 1);
+            });
+        }
+
+        function moveAsteroids() {
+            asteroids.forEach((asteroid, index) => {
+                asteroid.y += 3;
+                if (asteroid.y > canvas.height) asteroids.splice(index, 1);
+            });
+        }
+
+        function spawnAsteroid() {
+            let xPos = Math.random() * (canvas.width - asteroidSize * 2) + asteroidSize;
+            asteroids.push({ x: xPos, y: -asteroidSize });
+        }
+
+        function checkCollisions() {
+            lasers.forEach((laser, laserIndex) => {
+                asteroids.forEach((asteroid, asteroidIndex) => {
+                    const distance = Math.sqrt(Math.pow(laser.x - asteroid.x, 2) + Math.pow(laser.y - asteroid.y, 2));
+                    if (distance < asteroidSize) {
+                        asteroids.splice(asteroidIndex, 1);
+                        lasers.splice(laserIndex, 1);
+                        score += 10;
+                    }
+                });
+            });
+
+            asteroids.forEach((asteroid) => {
+                const distance = Math.sqrt(Math.pow(shipX - asteroid.x, 2) + Math.pow(shipY - asteroid.y, 2));
+                if (distance < asteroidSize) {
+                    gameOver = true;
+                    document.getElementById('gameOverText').style.display = 'block';
+                }
+            });
+        }
+
+        function gameLoop() {
+            if (gameOver) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            moveShip();
+            moveLasers();
+            moveAsteroids();
+            checkCollisions();
+
+            drawShip();
+            lasers.forEach(drawLaser);
+            asteroids.forEach(drawAsteroid);
+
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.fillText(`Score: ${score}`, 20, 30);
+
+            if (spacePressed) {
+                lasers.push({ x: shipX + shipWidth / 2 - 2.5, y: shipY });
+                spacePressed = false;
+            }
+
+            if (Math.random() < 0.02) spawnAsteroid();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function resetGame() {
+            gameOver = false;
+            shipX = canvas.width / 2 - shipWidth / 2;
+            shipY = canvas.height - shipHeight - 30;
+            lasers = [];
+            asteroids = [];
+            score = 0;
+            document.getElementById('gameOverText').style.display = 'none';
+            gameLoop();
+        }
+
+        gameLoop();
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && gameOver) {
+                resetGame();
+            }
+        });
+    </script>
+</body>
+</html>
